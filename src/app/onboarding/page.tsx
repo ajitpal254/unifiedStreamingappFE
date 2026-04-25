@@ -1,128 +1,190 @@
 "use client";
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
 
-const COUNTRIES = [
-  { id: "US", name: "United States", flag: "🇺🇸" },
-  { id: "CA", name: "Canada", flag: "🇨🇦" },
-  { id: "UK", name: "United Kingdom", flag: "🇬🇧" },
-  { id: "AU", name: "Australia", flag: "🇦🇺" },
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@clerk/nextjs";
+import { 
+  Check, 
+  Plus, 
+  ChevronRight, 
+  Globe, 
+  Tv, 
+  Sparkles,
+  Loader2
+} from "lucide-react";
+
+const REGIONS = [
+  { code: "US", name: "United States" },
+  { code: "CA", name: "Canada" },
+  { code: "GB", name: "United Kingdom" },
+  { code: "IN", name: "India" },
+  { code: "AU", name: "Australia" },
+  { code: "DE", name: "Germany" },
 ];
 
 const PROVIDERS = [
-  { id: "netflix", name: "Netflix", color: "bg-red-600" },
-  { id: "prime", name: "Prime Video", color: "bg-blue-500" },
-  { id: "disney", name: "Disney+", color: "bg-indigo-600" },
-  { id: "hulu", name: "Hulu", color: "bg-green-500" },
-  { id: "max", name: "Max", color: "bg-purple-600" },
-  { id: "youtube", name: "YouTube", color: "bg-red-500" },
+  "Netflix", "Prime Video", "Disney+", "Hulu", "HBO Max", "Apple TV+", "Paramount+", "Peacock"
 ];
 
-export default function Onboarding() {
-  const [step, setStep] = useState(1);
-  const [country, setCountry] = useState("US");
-  const [selectedProviders, setSelectedProviders] = useState<string[]>([]);
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
 
-  const toggleProvider = (id: string) => {
-    setSelectedProviders((prev) =>
-      prev.includes(id) ? prev.filter((p) => p !== id) : [...prev, id]
-    );
+export default function OnboardingPage() {
+  const router = useRouter();
+  const { getToken } = useAuth();
+  const [step, setStep] = useState(1);
+  const [region, setRegion] = useState("US");
+  const [mySubs, setMySubs] = useState<string[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  const toggleProvider = (name: string) => {
+    setMySubs(prev => prev.includes(name) ? prev.filter(s => s !== name) : [...prev, name]);
   };
 
-  const handleComplete = () => {
-    // Save to user preferences here
-    window.location.href = "/dashboard";
+  const finishOnboarding = async () => {
+    setLoading(true);
+    try {
+      const token = await getToken();
+      
+      // 1. Save Region
+      await fetch(`${API_URL}/api/me`, {
+        method: "PATCH",
+        headers: { 
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}` 
+        },
+        body: JSON.stringify({ region })
+      });
+
+      // 2. Save Providers
+      await fetch(`${API_URL}/api/providers`, {
+        method: "POST",
+        headers: { 
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}` 
+        },
+        body: JSON.stringify({ providers: mySubs })
+      });
+
+      router.push("/dashboard");
+    } catch (e) {
+      console.error(e);
+      setLoading(false);
+    }
   };
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-50 flex items-center justify-center p-4">
-      <div className="max-w-xl w-full">
-        {/* Progress */}
+    <div className="min-h-screen bg-zinc-950 text-white flex items-center justify-center p-6">
+      <div className="max-w-2xl w-full">
+        
+        {/* Progress Bar */}
         <div className="flex gap-2 mb-12">
-          <div className={`h-1 flex-1 rounded-full ${step >= 1 ? 'bg-emerald-500' : 'bg-zinc-800'}`} />
-          <div className={`h-1 flex-1 rounded-full ${step >= 2 ? 'bg-emerald-500' : 'bg-zinc-800'}`} />
+          {[1, 2, 3].map(i => (
+            <div 
+              key={i} 
+              className={`h-1 flex-1 rounded-full transition-all duration-500 ${step >= i ? "bg-emerald-500" : "bg-zinc-800"}`} 
+            />
+          ))}
         </div>
 
         {step === 1 && (
-          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <h1 className="text-4xl font-bold mb-4">Where are you watching?</h1>
-            <p className="text-zinc-400 mb-8 text-lg">
-              We need your country to show accurate streaming availability.
-            </p>
-            <div className="grid grid-cols-2 gap-4 mb-10">
-              {COUNTRIES.map((c) => (
+          <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <div className="space-y-3">
+              <div className="w-16 h-16 bg-emerald-500/10 rounded-3xl flex items-center justify-center text-emerald-500 mb-6">
+                <Globe size={32} />
+              </div>
+              <h1 className="text-4xl md:text-5xl font-black italic uppercase tracking-tighter">Where are you?</h1>
+              <p className="text-zinc-400 text-lg">We use your location to find the right streaming links for your region.</p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {REGIONS.map(r => (
                 <button
-                  key={c.id}
-                  onClick={() => setCountry(c.id)}
-                  className={`p-6 rounded-2xl border-2 text-left transition-all hover:scale-105 active:scale-95 ${
-                    country === c.id
-                      ? "border-emerald-500 bg-emerald-500/10"
-                      : "border-zinc-800 bg-zinc-900/50 hover:border-zinc-700"
+                  key={r.code}
+                  onClick={() => setRegion(r.code)}
+                  className={`p-6 rounded-2xl border-2 text-left transition-all ${
+                    region === r.code ? "bg-emerald-500/10 border-emerald-500 shadow-lg shadow-emerald-500/10" : "bg-zinc-900 border-zinc-800 hover:border-zinc-700"
                   }`}
                 >
-                  <span className="text-4xl mb-2 block">{c.flag}</span>
-                  <span className="text-lg font-medium">{c.name}</span>
+                  <p className={`font-bold text-lg ${region === r.code ? "text-emerald-400" : "text-zinc-300"}`}>{r.name}</p>
+                  <p className="text-xs text-zinc-500 uppercase tracking-widest mt-1">{r.code}</p>
                 </button>
               ))}
             </div>
-            <Button 
+
+            <button 
               onClick={() => setStep(2)}
-              className="w-full h-14 text-lg bg-white text-zinc-950 hover:bg-zinc-200 rounded-full cursor-pointer"
+              className="w-full bg-white text-black h-16 rounded-full font-black uppercase italic text-xl flex items-center justify-center gap-2 hover:bg-emerald-400 transition-all hover:scale-[1.02] active:scale-95"
             >
-              Continue
-            </Button>
+              Continue <ChevronRight size={24} />
+            </button>
           </div>
         )}
 
         {step === 2 && (
-          <div className="animate-in fade-in slide-in-from-right-8 duration-500">
-            <h1 className="text-4xl font-bold mb-4">What do you subscribe to?</h1>
-            <p className="text-zinc-400 mb-8 text-lg">
-              Select the services you already pay for to personalize your recommendations.
-            </p>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-10">
-              {PROVIDERS.map((p) => {
-                const isSelected = selectedProviders.includes(p.id);
+          <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-500">
+            <div className="space-y-3">
+              <div className="w-16 h-16 bg-emerald-500/10 rounded-3xl flex items-center justify-center text-emerald-500 mb-6">
+                <Tv size={32} />
+              </div>
+              <h1 className="text-4xl md:text-5xl font-black italic uppercase tracking-tighter">Your Services</h1>
+              <p className="text-zinc-400 text-lg">Select the services you pay for to get personalized recommendations.</p>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              {PROVIDERS.map(name => {
+                const isActive = mySubs.includes(name);
                 return (
                   <button
-                    key={p.id}
-                    onClick={() => toggleProvider(p.id)}
-                    className={`relative p-6 rounded-2xl border-2 transition-all hover:scale-105 active:scale-95 overflow-hidden group ${
-                      isSelected
-                        ? "border-emerald-500 bg-emerald-500/10"
-                        : "border-zinc-800 bg-zinc-900/50 hover:border-zinc-700"
+                    key={name}
+                    onClick={() => toggleProvider(name)}
+                    className={`flex flex-col items-center justify-center p-4 rounded-2xl border-2 transition-all ${
+                      isActive ? "bg-emerald-500/10 border-emerald-500" : "bg-zinc-900 border-zinc-800 hover:border-zinc-700"
                     }`}
                   >
-                    <div className={`absolute top-0 left-0 w-1 h-full ${p.color} opacity-50 group-hover:opacity-100 transition-opacity`} />
-                    <span className="text-lg font-semibold block mt-2 text-left">{p.name}</span>
-                    {isSelected && (
-                      <div className="absolute top-4 right-4 text-emerald-500">
-                        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                        </svg>
-                      </div>
-                    )}
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center mb-3 ${isActive ? "bg-emerald-500 text-zinc-950" : "bg-zinc-800 text-zinc-500"}`}>
+                      {isActive ? <Check size={20} /> : <Plus size={20} />}
+                    </div>
+                    <span className={`text-[10px] font-black uppercase tracking-tighter text-center ${isActive ? "text-emerald-400" : "text-zinc-500"}`}>{name}</span>
                   </button>
                 );
               })}
             </div>
+
             <div className="flex gap-4">
-              <Button 
-                onClick={() => setStep(1)}
-                variant="ghost"
-                className="h-14 px-8 text-lg hover:bg-zinc-800 rounded-full cursor-pointer"
+              <button onClick={() => setStep(1)} className="flex-1 bg-zinc-900 text-zinc-400 h-16 rounded-full font-bold uppercase text-sm hover:bg-zinc-800">Back</button>
+              <button 
+                onClick={() => setStep(3)}
+                className="flex-[2] bg-white text-black h-16 rounded-full font-black uppercase italic text-xl flex items-center justify-center gap-2 hover:bg-emerald-400 transition-all shadow-xl"
               >
-                Back
-              </Button>
-              <Button 
-                onClick={handleComplete}
-                className="flex-1 h-14 text-lg bg-emerald-500 hover:bg-emerald-600 text-white rounded-full shadow-[0_0_30px_rgba(16,185,129,0.3)] transition-all hover:shadow-[0_0_40px_rgba(16,185,129,0.5)] cursor-pointer"
-              >
-                Let's go
-              </Button>
+                Almost Done <ChevronRight size={24} />
+              </button>
             </div>
           </div>
         )}
+
+        {step === 3 && (
+          <div className="text-center space-y-10 animate-in zoom-in-95 duration-500">
+            <div className="relative inline-block">
+              <div className="w-24 h-24 bg-emerald-500 rounded-full flex items-center justify-center text-zinc-950 mx-auto shadow-[0_0_50px_rgba(16,185,129,0.5)]">
+                <Sparkles size={48} />
+              </div>
+            </div>
+            
+            <div className="space-y-4">
+              <h1 className="text-5xl md:text-7xl font-black italic uppercase tracking-tighter leading-none">Ready for Action</h1>
+              <p className="text-zinc-400 text-xl max-w-md mx-auto">We've tailored your dashboard with your region and {mySubs.length} services.</p>
+            </div>
+
+            <button 
+              onClick={finishOnboarding}
+              disabled={loading}
+              className="w-full bg-emerald-500 text-zinc-950 h-20 rounded-full font-black uppercase italic text-2xl flex items-center justify-center gap-3 hover:bg-emerald-400 hover:scale-[1.03] transition-all shadow-2xl disabled:opacity-50"
+            >
+              {loading ? <Loader2 className="animate-spin" size={32} /> : "Enter the Hub"}
+            </button>
+          </div>
+        )}
+
       </div>
     </div>
   );

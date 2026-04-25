@@ -34,6 +34,7 @@ export default function Dashboard() {
   const { user } = useUser();
   const { getToken } = useAuth();
   const [trending, setTrending] = useState<Title[]>([]);
+  const [recommended, setRecommended] = useState<Title[]>([]);
   const [watchlist, setWatchlist] = useState<WatchlistItem[]>([]);
   const [featured, setFeatured] = useState<Title | null>(null);
   const [loading, setLoading] = useState(true);
@@ -49,18 +50,24 @@ export default function Dashboard() {
         const results = trendData.results || [];
         setTrending(results);
         
-        // Pick a random featured title from trending
         if (results.length > 0) {
           setFeatured(results[0]);
         }
 
-        // 2. Fetch Watchlist
         if (token) {
+          // 2. Fetch Recommended (Subscription-based)
+          const recRes = await fetch(`${API_URL}/api/titles/recommended`, {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          const recData = await recRes.json();
+          setRecommended(recData.results || []);
+
+          // 3. Fetch Watchlist
           const watchRes = await fetch(`${API_URL}/api/watchlist`, {
             headers: { Authorization: `Bearer ${token}` }
           });
           const watchData = await watchRes.json();
-          setWatchlist(watchData.slice(0, 3)); // Only show top 3 for dashboard
+          setWatchlist(watchData.slice(0, 3));
         }
       } catch (e) {
         console.error("Dashboard load error:", e);
@@ -171,7 +178,63 @@ export default function Dashboard() {
           </section>
         )}
 
-        {/* Modern Trending Slider */}
+        {/* Personalized Recommended Section */}
+        {recommended.length > 0 && (
+          <section className="relative group/rec-slider">
+            <div className="flex items-center justify-between mb-8">
+              <div className="space-y-1">
+                <h2 className="text-2xl font-black italic uppercase tracking-tight flex items-center gap-2">
+                  Just for You
+                  <span className="bg-emerald-500 text-zinc-950 text-[10px] px-2 py-0.5 rounded-full not-italic">NEW</span>
+                </h2>
+                <p className="text-zinc-500 text-sm">Trending on your active services</p>
+              </div>
+            </div>
+            
+            <div className="relative">
+              <button 
+                onClick={() => document.getElementById("rec-slider")?.scrollBy({ left: -400, behavior: "smooth" })}
+                className="absolute -left-6 top-1/2 -translate-y-1/2 z-40 w-12 h-12 rounded-full bg-zinc-900/80 border border-zinc-800 flex items-center justify-center text-white opacity-0 group-hover/rec-slider:opacity-100 transition-opacity hover:bg-emerald-500 hover:text-zinc-950 shadow-2xl backdrop-blur-md"
+              >
+                <ChevronRight className="rotate-180" size={24} />
+              </button>
+
+              <button 
+                onClick={() => document.getElementById("rec-slider")?.scrollBy({ left: 400, behavior: "smooth" })}
+                className="absolute -right-6 top-1/2 -translate-y-1/2 z-40 w-12 h-12 rounded-full bg-zinc-900/80 border border-zinc-800 flex items-center justify-center text-white opacity-0 group-hover/rec-slider:opacity-100 transition-opacity hover:bg-emerald-500 hover:text-zinc-950 shadow-2xl backdrop-blur-md"
+              >
+                <ChevronRight size={24} />
+              </button>
+
+              <div 
+                id="rec-slider"
+                className="flex gap-6 overflow-x-auto pb-10 scrollbar-hide snap-x px-4 -mx-4 scroll-smooth"
+              >
+                {recommended.map((item) => (
+                  <Link 
+                    href={`/dashboard/titles/${item.media_type}/${item.id}`}
+                    key={`rec-${item.id}`} 
+                    className="relative flex-none w-48 md:w-64 aspect-[2/3] rounded-2xl overflow-hidden snap-start group/card cursor-pointer transition-all duration-500 hover:scale-[1.03] hover:z-20 shadow-xl border border-zinc-900 hover:border-emerald-500/50"
+                  >
+                    <img 
+                      src={item.poster_path.startsWith("http") ? item.poster_path : `${TMDB_IMG_POSTER}${item.poster_path}`} 
+                      alt={item.title || item.name} 
+                      className="w-full h-full object-cover transition-transform duration-700 group-hover/card:scale-110" 
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-transparent to-transparent opacity-80" />
+                    <div className="absolute bottom-0 left-0 p-5 w-full">
+                      <h3 className="font-bold text-lg leading-tight text-white line-clamp-2 group-hover/card:text-emerald-400">
+                        {item.title || item.name}
+                      </h3>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          </section>
+        )}
+
+        {/* Modern Trending Slider (Global) */}
         <section className="relative group/slider">
           <div className="flex items-center justify-between mb-8">
             <div className="space-y-1">
@@ -240,6 +303,46 @@ export default function Dashboard() {
                 </Link>
               ))}
             </div>
+          </div>
+        </section>
+
+        {/* Trailers Section */}
+        <section>
+          <div className="flex items-center justify-between mb-8">
+            <div className="space-y-1">
+              <h2 className="text-2xl font-black italic uppercase tracking-tight flex items-center gap-2">
+                New Trailers
+              </h2>
+              <p className="text-zinc-500 text-sm">Watch the latest clips and previews</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {trending.slice(1, 4).map((item) => (
+              <div 
+                key={`trailer-${item.id}`}
+                className="group relative aspect-video rounded-3xl overflow-hidden bg-zinc-900 border border-zinc-800 hover:border-emerald-500/50 transition-all shadow-2xl"
+              >
+                <img 
+                  src={`${TMDB_IMG_LARGE}${item.backdrop_path}`} 
+                  alt={item.title} 
+                  className="w-full h-full object-cover grayscale-[0.5] group-hover:grayscale-0 transition-all duration-700 group-hover:scale-105" 
+                />
+                <div className="absolute inset-0 bg-black/40 group-hover:bg-black/20 transition-colors" />
+                
+                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                  <Link 
+                    href={`/dashboard/titles/${item.media_type}/${item.id}`}
+                    className="w-16 h-16 rounded-full bg-white/20 backdrop-blur-md border border-white/30 flex items-center justify-center text-white scale-90 group-hover:scale-100 transition-all hover:bg-emerald-500 hover:text-zinc-950 hover:border-emerald-400"
+                  >
+                    <Play size={24} fill="currentColor" className="ml-1" />
+                  </Link>
+                  <div className="mt-4 text-center px-6 opacity-0 group-hover:opacity-100 transition-all translate-y-2 group-hover:translate-y-0">
+                    <h4 className="font-black italic uppercase text-lg leading-tight">{item.title || item.name}</h4>
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
         </section>
 

@@ -1,0 +1,17 @@
+{
+  "name": "Unified Streaming Hub",
+  "short_name": "Unified",
+  "description": "Your ultimate cross-platform streaming library.",
+  "start_url": "/dashboard",
+  "display": "standalone",
+  "background_color": "#09090b",
+  "theme_color": "#10b981",
+  "icons": [
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

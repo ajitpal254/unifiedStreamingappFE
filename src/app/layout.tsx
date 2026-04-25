@@ -16,6 +16,14 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Unified Streaming Hub",
   description: "Search once, watch anywhere.",
+  manifest: "/manifest.json",
+  themeColor: "#09090b",
+  viewport: "width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "Unified",
+  },
 };
 
 export default function RootLayout({
