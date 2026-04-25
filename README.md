@@ -10,58 +10,71 @@ This is **not** a re-streaming app. It's a **streaming operating layer** — a f
 
 ---
 
-## ✅ What's Done (Phase 1)
+## ✅ What's Done
 
 ### Infrastructure & Setup
 - [x] Monorepo structure (`apps/web`, `apps/api`)
-- [x] Next.js 15 frontend (`apps/web`) with TypeScript
+- [x] Next.js 16 frontend (`apps/web`) with TypeScript
 - [x] Express.js API backend (`apps/api`) with TypeScript
-- [x] Prisma ORM with SQLite (dev) — migration to PostgreSQL next
-- [x] `.gitignore` hardened — no secrets, no `.env`, no `.db` files committed
+- [x] Prisma ORM — migrated to **PostgreSQL**
+- [x] `.gitignore` hardened — no secrets, no `.env`, no `.db` or `.pdf` files committed
 
 ### Authentication
 - [x] Clerk integrated for user authentication
 - [x] Sign-up and Sign-in pages (`/sign-up`, `/sign-in`)
-- [x] Route middleware protecting `/dashboard` and `/onboarding`
+- [x] Route protection via `proxy.ts` (Next.js 16 convention) — `/dashboard` and `/onboarding` are gated
 - [x] Onboarding page post sign-up
+- [x] Real Clerk `userId` extracted from JWT on every API request (no mock users)
+- [x] Lazy user sync — user row created in PostgreSQL on first API call (`GET /api/watchlist`)
+- [x] `GET /api/me` endpoint for explicit user sync
+
+### Account Management
+- [x] `/dashboard/settings` — full account settings page using Clerk `<UserProfile />`
+  - Edit name and avatar
+  - Manage email addresses
+  - **Add a password** (even after signing up with Google/GitHub SSO)
+  - Two-factor authentication
+  - Active session management
+  - Manage connected OAuth accounts
 
 ### Dashboard & Watchlist
-- [x] Dashboard layout with navigation
+- [x] Dashboard layout with sidebar navigation
 - [x] Watchlist page (`/dashboard/watchlist`) with full UI
-  - Search and filter controls
+  - Live search filtering
   - Tab filtering: All / Movies / Series / Completed
-  - Delete items (optimistic UI)
-  - Loading and empty states
-- [x] Watchlist API (`GET /api/watchlist`, `POST /api/watchlist`, `DELETE /api/watchlist/:id`)
-- [x] Prisma schema: `User`, `WatchlistItem`, `Provider` models
+  - Delete items with optimistic UI update
+  - Proper empty states (no results vs. empty list)
+  - Formatted "Added" dates
+- [x] Watchlist API — all routes require Clerk auth bearer token
+  - `GET /api/watchlist` — returns only the signed-in user's items
+  - `POST /api/watchlist` — adds item with ownership
+  - `DELETE /api/watchlist/:id` — only the owner can delete
+- [x] Provider API (`GET /api/providers`, `POST /api/providers`)
+- [x] Prisma schema: `User`, `WatchlistItem`, `Provider` models with cascade deletes
 
 ---
 
-## 🚧 Upcoming Tasks (Roadmap)
+## 🚧 Roadmap
 
-### 🔴 Priority 1 — Database & Auth Hardening
-- [ ] Migrate from SQLite → **PostgreSQL** (Neon / Supabase / local)
-- [ ] Extract real `userId` from Clerk JWT in the API (remove mock `user_123`)
-- [ ] Add `userId` filtering to all watchlist queries (currently returns all items)
-
-### 🟠 Priority 2 — Search & Discovery
+### 🔴 Priority 1 — Search & Discovery
 - [ ] Integrate **TMDB API** for title metadata, artwork, cast, genres, trailers
 - [ ] Integrate **Watchmode API** for streaming availability by provider & region
 - [ ] Build universal search page (`/dashboard/search`)
 - [ ] Build title detail page (`/dashboard/titles/[id]`)
 
-### 🟡 Priority 3 — Providers & Deep Links
-- [ ] Provider selection UI (Netflix, Prime, Disney+, Hulu, Max, YouTube…)
+### 🟠 Priority 2 — Providers & Deep Links
+- [ ] Provider selection UI — Netflix, Prime, Disney+, Hulu, Max, YouTube…
 - [ ] Save user's active subscriptions to DB
-- [ ] Deep link service — "Watch on Netflix" button routes user to correct provider URL
+- [ ] Deep link service — "Watch on Netflix" button routes to correct provider URL
 - [ ] Track outbound click events for analytics
 
-### 🟢 Priority 4 — Recommendations
-- [ ] Recommendation feed (`/dashboard/home`) — "Available on your services", "Because you liked…"
+### 🟡 Priority 3 — Recommendations
+- [ ] Recommendation feed (`/dashboard`) — "Available on your services", "Because you liked…"
 - [ ] Rules-based ranking using subscriptions, watchlist, genres, and popularity
 - [ ] Country/region filtering
 
-### 🔵 Priority 5 — Polish & Scale
+### 🟢 Priority 4 — Infrastructure & Scale
+- [ ] **Clerk Webhooks** — sync users to DB instantly on sign-up (replaces lazy sync)
 - [ ] Add **Redis** caching for search and availability responses
 - [ ] Add **Meilisearch** for fast full-text search
 - [ ] Watchlist availability alerts (notifications when a title lands on a subscribed service)
@@ -73,7 +86,7 @@ This is **not** a re-streaming app. It's a **streaming operating layer** — a f
 ## 🗺️ Architecture
 
 ```
-Client (Next.js)
+Client (Next.js 16)
     │
     ▼
 API Gateway (Express / later NestJS)
@@ -97,13 +110,13 @@ API Gateway (Express / later NestJS)
 
 | Layer | Technology |
 |---|---|
-| Frontend | Next.js 15, React, TypeScript, Tailwind CSS, shadcn/ui |
+| Frontend | Next.js 16, React, TypeScript, Tailwind CSS, shadcn/ui |
 | Backend | Node.js, Express (→ NestJS at scale), TypeScript |
-| Database | PostgreSQL (dev: SQLite via Prisma) |
-| Auth | Clerk |
+| Database | PostgreSQL via Prisma ORM |
+| Auth | Clerk (SSO + password, JWT verification) |
 | Cache | Redis (upcoming) |
 | Search | Meilisearch (upcoming) |
-| CI/CD | GitHub Actions |
+| CI/CD | GitHub Actions (upcoming) |
 | Hosting | Vercel (frontend), Render/Railway (backend) |
 
 ---
@@ -112,12 +125,12 @@ API Gateway (Express / later NestJS)
 
 ### Prerequisites
 - Node.js 20+
-- PostgreSQL (or use the SQLite dev DB for now)
+- PostgreSQL 14+ installed and running
 
 ### Frontend
 ```bash
 cd apps/web
-cp .env.example .env.local   # Fill in Clerk keys
+# Create .env with your Clerk keys (see Environment Variables below)
 npm install
 npm run dev                  # http://localhost:3000
 ```
@@ -125,9 +138,9 @@ npm run dev                  # http://localhost:3000
 ### API
 ```bash
 cd apps/api
-cp .env.example .env         # Fill in DATABASE_URL
+# Create .env with your DATABASE_URL and Clerk keys
 npm install
-npx prisma migrate dev
+npx prisma migrate dev --name init_postgresql
 npm run dev                  # http://localhost:4000
 ```
 
@@ -135,19 +148,25 @@ npm run dev                  # http://localhost:4000
 
 ## 🔐 Environment Variables
 
-**`apps/web/.env.local`**
-```
-NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=
-CLERK_SECRET_KEY=
+**`apps/web/.env`**
+```env
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_...
+CLERK_SECRET_KEY=sk_test_...
 NEXT_PUBLIC_CLERK_SIGN_IN_URL=/sign-in
 NEXT_PUBLIC_CLERK_SIGN_UP_URL=/sign-up
+NEXT_PUBLIC_API_URL=http://localhost:4000
 ```
 
 **`apps/api/.env`**
-```
-DATABASE_URL=postgresql://user:password@localhost:5432/streaming_hub
+```env
+DATABASE_URL=postgresql://postgres:password@localhost:5432/streaming_hub
+CLERK_PUBLISHABLE_KEY=pk_test_...
+CLERK_SECRET_KEY=sk_test_...
+FRONTEND_URL=http://localhost:3000
 PORT=4000
 ```
+
+> Keys are available at [dashboard.clerk.com](https://dashboard.clerk.com) → your app → API Keys.
 
 ---
 
