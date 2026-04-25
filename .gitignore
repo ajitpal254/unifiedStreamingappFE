@@ -46,3 +46,9 @@ next-env.d.ts
 /src/generated/prisma
 *.db
 *.db-journal
+
+# PDF files and temp scripts
+*.pdf
+parse_pdf.js
+parse_pdf.mjs
+pdf_content.txt
