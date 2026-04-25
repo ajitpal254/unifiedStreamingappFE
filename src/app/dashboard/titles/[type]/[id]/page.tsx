@@ -67,11 +67,15 @@ export default function TitleDetailPage() {
       .finally(() => setLoading(false));
 
     // Fetch availability
-    fetch(`${API_URL}/api/titles/${type}/${id}/availability`)
+    getToken().then(token => {
+      fetch(`${API_URL}/api/titles/${type}/${id}/availability`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
       .then(res => res.json())
       .then(setAvailability)
       .catch(console.error)
       .finally(() => setLoadingAvailability(false));
+    });
 
     // Fetch user subscriptions
     getToken().then(token => {
