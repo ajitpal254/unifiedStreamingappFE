@@ -2,8 +2,19 @@
 
 import { useState, useEffect } from "react";
 import { useAuth } from "@clerk/nextjs";
-import { Button } from "@/components/ui/button";
-import { Play, Trash2, Search, Filter, MoreVertical, CheckCircle2 } from "lucide-react";
+import { 
+  Play, 
+  Trash2, 
+  Search, 
+  Filter, 
+  ChevronRight, 
+  Calendar,
+  Film,
+  Tv,
+  Loader2,
+  ExternalLink
+} from "lucide-react";
+import Link from "next/link";
 
 interface WatchlistItem {
   id: string;
@@ -14,14 +25,6 @@ interface WatchlistItem {
   provider: string;
   addedAt: string;
 }
-
-const PROVIDER_COLORS: Record<string, string> = {
-  netflix: "bg-red-600 text-white",
-  prime: "bg-blue-500 text-white",
-  disney: "bg-indigo-600 text-white",
-  hulu: "bg-green-500 text-white",
-  max: "bg-purple-600 text-white",
-};
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
 
@@ -34,8 +37,7 @@ export default function WatchlistPage() {
 
   useEffect(() => {
     fetchWatchlist();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [getToken]);
 
   const fetchWatchlist = async () => {
     try {
@@ -78,119 +80,122 @@ export default function WatchlistPage() {
   });
 
   return (
-    <div className="p-8 md:p-12 pb-24">
+    <div className="p-8 md:p-12 pb-24 max-w-7xl mx-auto">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10">
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-8 mb-12">
         <div>
-          <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight mb-3">My Watchlist</h1>
-          <p className="text-zinc-400 text-lg">Manage and organize your saved movies and shows.</p>
+          <h1 className="text-4xl md:text-6xl font-black tracking-tighter mb-4 italic uppercase">
+            My Watchlist
+          </h1>
+          <p className="text-zinc-500 text-lg font-medium">Your personal cinema library, unified.</p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-4">
           <div className="relative group">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500 group-focus-within:text-emerald-500 transition-colors" size={16} />
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500 group-focus-within:text-emerald-500 transition-colors" size={18} />
             <input
               type="text"
-              placeholder="Search watchlist..."
+              placeholder="Filter by title..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full md:w-64 bg-zinc-900/50 border border-zinc-800 rounded-full py-2 pl-9 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all text-zinc-100"
+              className="w-full md:w-72 bg-zinc-900 border border-zinc-800 rounded-2xl py-3 pl-12 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all text-zinc-100 placeholder:text-zinc-600 font-medium"
             />
           </div>
-          <Button variant="outline" className="border-zinc-800 bg-zinc-900/50 hover:bg-zinc-800 rounded-full h-10 px-4 flex items-center gap-2">
-            <Filter size={16} />
-            <span className="hidden sm:inline">Filter</span>
-          </Button>
         </div>
       </div>
 
-      {/* Tabs */}
-      <div className="flex gap-2 mb-8 border-b border-zinc-900 pb-px overflow-x-auto scrollbar-hide">
+      {/* Modern Filter Tabs */}
+      <div className="flex items-center gap-2 mb-10 overflow-x-auto scrollbar-hide pb-2">
         {["All", "Movies", "Series", "Completed"].map((tab) => (
           <button
             key={tab}
             onClick={() => setFilter(tab)}
-            className={`px-5 py-2.5 rounded-t-lg font-medium text-sm whitespace-nowrap transition-colors relative ${
-              filter === tab ? "text-emerald-400" : "text-zinc-400 hover:text-zinc-200"
+            className={`px-6 py-2.5 rounded-full font-bold text-xs uppercase tracking-widest transition-all border ${
+              filter === tab 
+                ? "bg-emerald-500 text-zinc-950 border-emerald-400 shadow-lg shadow-emerald-500/20" 
+                : "bg-zinc-900 text-zinc-500 border-zinc-800 hover:border-zinc-700 hover:text-zinc-300"
             }`}
           >
             {tab}
-            {filter === tab && (
-              <div className="absolute bottom-0 left-0 w-full h-0.5 bg-emerald-500 translate-y-px" />
-            )}
           </button>
         ))}
       </div>
 
-      {/* Grid */}
+      {/* Grid Layout */}
       {loading ? (
-        <div className="flex items-center justify-center py-20">
-          <div className="w-10 h-10 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+        <div className="flex flex-col items-center justify-center py-32 text-zinc-600 animate-pulse">
+          <Loader2 className="w-10 h-10 animate-spin text-emerald-500 mb-4" />
+          <p className="font-bold uppercase tracking-widest text-xs">Syncing Library...</p>
         </div>
       ) : filteredWatchlist.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-20 text-zinc-500">
-          <p className="text-lg font-medium">No items found</p>
-          <p className="text-sm mt-1">
-            {search ? `No results for "${search}"` : "Add something to your watchlist to get started."}
+        <div className="flex flex-col items-center justify-center py-32 text-zinc-600 border-2 border-dashed border-zinc-900 rounded-3xl">
+          <Film size={48} className="mb-6 opacity-20" />
+          <p className="text-xl font-bold text-zinc-400">Empty Library</p>
+          <p className="text-sm mt-2 max-w-xs text-center">
+            {search ? `No matches for "${search}" in your list.` : "Your watchlist is empty. Go find something to watch!"}
           </p>
+          {!search && (
+            <Link href="/dashboard/search" className="mt-8 bg-emerald-500 text-zinc-950 px-8 py-3 rounded-full font-black uppercase italic text-sm hover:bg-emerald-400 transition-all hover:scale-105">
+              Start Exploring
+            </Link>
+          )}
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6">
           {filteredWatchlist.map((item) => (
-            <div key={item.id} className="group relative rounded-2xl overflow-hidden bg-zinc-900 border border-zinc-800 transition-all hover:border-zinc-700 hover:shadow-2xl hover:-translate-y-1">
-              {/* Image container */}
-              <div className="relative aspect-video w-full overflow-hidden">
-                <img src={item.image} alt={item.title} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
-                <div className="absolute inset-0 bg-gradient-to-t from-zinc-900 via-transparent to-black/20" />
+            <div 
+              key={item.id} 
+              className="group relative flex flex-col"
+            >
+              {/* Poster Card */}
+              <div className="relative aspect-[2/3] rounded-2xl overflow-hidden bg-zinc-900 border border-zinc-800 transition-all duration-500 group-hover:scale-[1.03] group-hover:z-10 group-hover:border-emerald-500/50 shadow-xl shadow-black/40">
+                <img src={item.image} alt={item.title} className="w-full h-full object-cover grayscale-[0.3] group-hover:grayscale-0 transition-all duration-700" />
+                
+                {/* Overlay */}
+                <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-transparent to-transparent opacity-60 group-hover:opacity-100 transition-opacity" />
 
-                <div className="absolute top-3 right-3 flex items-center gap-2">
-                  {item.progress === 100 && (
-                    <div className="w-6 h-6 rounded-full bg-emerald-500 flex items-center justify-center shadow-lg">
-                      <CheckCircle2 size={14} className="text-zinc-950" />
-                    </div>
-                  )}
+                {/* Top Actions */}
+                <div className="absolute top-3 right-3 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-all translate-x-4 group-hover:translate-x-0">
                   <button
                     onClick={() => deleteFromWatchlist(item.id)}
-                    className="w-8 h-8 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center text-zinc-300 hover:text-white hover:bg-black/60 transition-colors opacity-0 group-hover:opacity-100"
+                    className="w-9 h-9 rounded-full bg-red-500/20 backdrop-blur-md border border-red-500/50 flex items-center justify-center text-red-500 hover:bg-red-500 hover:text-white transition-all shadow-xl"
+                    title="Remove from watchlist"
                   >
-                    <Trash2 size={14} />
+                    <Trash2 size={16} />
                   </button>
                 </div>
 
-                {/* Provider Badge */}
-                <div className="absolute top-3 left-3">
-                  <span className={`text-[10px] font-bold px-2 py-1 rounded-md uppercase tracking-wider shadow-sm ${PROVIDER_COLORS[item.provider] ?? "bg-zinc-700 text-white"}`}>
-                    {item.provider}
-                  </span>
+                {/* Bottom Info */}
+                <div className="absolute bottom-0 left-0 p-4 w-full transform translate-y-2 group-hover:translate-y-0 transition-all">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-emerald-500 text-zinc-950 uppercase tracking-tighter">
+                      {item.type}
+                    </span>
+                    <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-300 border border-zinc-700 uppercase tracking-tighter line-clamp-1">
+                      {item.provider}
+                    </span>
+                  </div>
+                  <h3 className="font-bold text-sm leading-tight text-white mb-1 line-clamp-2 group-hover:text-emerald-400 transition-colors">
+                    {item.title}
+                  </h3>
                 </div>
 
-                {/* Play Overlay */}
-                <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all bg-black/20">
-                  <div className="w-12 h-12 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center scale-75 group-hover:scale-100 transition-all duration-300 cursor-pointer hover:bg-emerald-500 group/play">
-                    <Play fill="currentColor" size={20} className="text-white group-hover/play:text-zinc-950 ml-1" />
-                  </div>
+                {/* Quick Link Overlay */}
+                <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all bg-emerald-500/10 backdrop-blur-[2px]">
+                   <Link 
+                     href={`/dashboard/search`} // Note: Ideally we store type/id to link to details
+                     className="w-12 h-12 rounded-full bg-emerald-500 flex items-center justify-center text-zinc-950 shadow-2xl scale-75 group-hover:scale-100 transition-all duration-300 hover:bg-emerald-400"
+                   >
+                     <ExternalLink size={20} strokeWidth={3} />
+                   </Link>
                 </div>
-
-                {/* Progress Bar */}
-                {item.progress > 0 && item.progress < 100 && (
-                  <div className="absolute bottom-0 left-0 w-full h-1 bg-zinc-800/80 backdrop-blur-sm">
-                    <div className="h-full bg-emerald-500" style={{ width: `${item.progress}%` }} />
-                  </div>
-                )}
               </div>
 
-              {/* Content */}
-              <div className="p-5">
-                <div className="flex items-start justify-between gap-4 mb-2">
-                  <h3 className="font-bold text-lg leading-tight truncate text-zinc-100">{item.title}</h3>
-                  <button className="text-zinc-500 hover:text-zinc-300">
-                    <MoreVertical size={16} />
-                  </button>
-                </div>
-                <div className="flex items-center gap-3 text-xs text-zinc-400">
-                  <span>{item.type}</span>
-                  <span className="w-1 h-1 rounded-full bg-zinc-700" />
-                  <span>Added {new Date(item.addedAt).toLocaleDateString()}</span>
+              {/* Added Date (Static) */}
+              <div className="mt-3 px-1 flex items-center justify-between">
+                <div className="flex items-center gap-1.5 text-zinc-500 text-[10px] font-bold uppercase tracking-widest">
+                  <Calendar size={10} />
+                  {new Date(item.addedAt).toLocaleDateString()}
                 </div>
               </div>
             </div>

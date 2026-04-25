@@ -36,21 +36,20 @@ This is **not** a re-streaming app. It's a **streaming operating layer** — a f
   - Two-factor authentication
   - Active session management
   - Manage connected OAuth accounts
+- [x] **My Subscriptions** — select active services (Netflix, Prime, etc.)
+  - Persistent storage in PostgreSQL
+  - Real-time auto-sync
 
-### Dashboard & Watchlist
-- [x] Dashboard layout with sidebar navigation
-- [x] Watchlist page (`/dashboard/watchlist`) with full UI
-  - Live search filtering
-  - Tab filtering: All / Movies / Series / Completed
-  - Delete items with optimistic UI update
-  - Proper empty states (no results vs. empty list)
-  - Formatted "Added" dates
-- [x] Watchlist API — all routes require Clerk auth bearer token
-  - `GET /api/watchlist` — returns only the signed-in user's items
-  - `POST /api/watchlist` — adds item with ownership
-  - `DELETE /api/watchlist/:id` — only the owner can delete
-- [x] Provider API (`GET /api/providers`, `POST /api/providers`)
-- [x] Prisma schema: `User`, `WatchlistItem`, `Provider` models with cascade deletes
+### Search & Discovery
+- [x] **TMDB API Integration** — search 1M+ titles with real-time metadata
+- [x] **Watchmode API Integration** — live streaming availability check
+- [x] **"Unified" Experience** — titles are highlighted if available on the user's active subscriptions
+- [x] Dashboard search page (`/dashboard/search`) with trending fallback
+- [x] Title detail page (`/dashboard/titles/[type]/[id]`)
+  - Immersive hero section with backdrops
+  - Cast gallery and director info
+  - Direct links to streaming platforms
+  - Trailer integration (YouTube)
 
 ---
 

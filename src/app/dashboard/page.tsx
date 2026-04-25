@@ -1,203 +1,265 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useUser, useAuth } from "@clerk/nextjs";
+import { Play, Plus, ChevronRight, Info, Star, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Play, Plus, ChevronRight, Info } from "lucide-react";
+import Link from "next/link";
 
-// Mock data
-const FEATURED = {
-  title: "Dune: Part Two",
-  description: "Paul Atreides unites with Chani and the Fremen while on a warpath of revenge against the conspirators who destroyed his family.",
-  match: "98% Match",
-  year: "2024",
-  rating: "PG-13",
-  duration: "2h 46m",
-  tags: ["Sci-Fi", "Adventure", "Action"],
-  provider: "max"
-};
+interface Title {
+  id: number;
+  media_type: "movie" | "tv";
+  title?: string;
+  name?: string;
+  poster_path: string;
+  backdrop_path: string;
+  overview: string;
+  vote_average: number;
+}
 
-const TRENDING = [
-  { id: 1, title: "Shogun", image: "https://images.unsplash.com/photo-1578589318433-39b511d5633f?q=80&w=800&auto=format&fit=crop", provider: "hulu" },
-  { id: 2, title: "The Bear", image: "https://images.unsplash.com/photo-1583338917451-fade2751e5e5?q=80&w=800&auto=format&fit=crop", provider: "hulu" },
-  { id: 3, title: "Fallout", image: "https://images.unsplash.com/photo-1542382124-7eb3268846c8?q=80&w=800&auto=format&fit=crop", provider: "prime" },
-  { id: 4, title: "3 Body Problem", image: "https://images.unsplash.com/photo-1451187580459-43490279c0fa?q=80&w=800&auto=format&fit=crop", provider: "netflix" },
-  { id: 5, title: "Loki", image: "https://images.unsplash.com/photo-1618519764620-7403abdbdf9c?q=80&w=800&auto=format&fit=crop", provider: "disney" },
-];
+interface WatchlistItem {
+  id: string;
+  title: string;
+  type: string;
+  image: string;
+  provider: string;
+  addedAt: string;
+}
 
-const CONTINUE_WATCHING = [
-  { id: 101, title: "Stranger Things", episode: "S4:E8 Papa", progress: 65, image: "https://images.unsplash.com/photo-1626814026160-2237a95fc5a0?q=80&w=800&auto=format&fit=crop", provider: "netflix" },
-  { id: 102, title: "Succession", episode: "S4:E3 Connor's Wedding", progress: 15, image: "https://images.unsplash.com/photo-1507676184212-d0330a156f97?q=80&w=800&auto=format&fit=crop", provider: "max" },
-];
-
-const PROVIDER_COLORS: Record<string, string> = {
-  netflix: "bg-red-600 text-white",
-  prime: "bg-blue-500 text-white",
-  disney: "bg-indigo-600 text-white",
-  hulu: "bg-green-500 text-white",
-  max: "bg-purple-600 text-white",
-};
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
+const TMDB_IMG_LARGE = "https://image.tmdb.org/t/p/original";
+const TMDB_IMG_POSTER = "https://image.tmdb.org/t/p/w500";
 
 export default function Dashboard() {
-  const [hoveredItem, setHoveredItem] = useState<number | null>(null);
+  const { user } = useUser();
+  const { getToken } = useAuth();
+  const [trending, setTrending] = useState<Title[]>([]);
+  const [watchlist, setWatchlist] = useState<WatchlistItem[]>([]);
+  const [featured, setFeatured] = useState<Title | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  const addToWatchlist = async (item: { title: string, type: string, image: string, provider: string }) => {
-    try {
-      const res = await fetch("http://localhost:4000/api/watchlist", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(item),
-      });
-      if (res.ok) {
-        // Could show a toast notification here
-        console.log("Added to watchlist!");
+  useEffect(() => {
+    async function loadData() {
+      try {
+        const token = await getToken();
+        
+        // 1. Fetch Trending
+        const trendRes = await fetch(`${API_URL}/api/titles/trending`);
+        const trendData = await trendRes.json();
+        const results = trendData.results || [];
+        setTrending(results);
+        
+        // Pick a random featured title from trending
+        if (results.length > 0) {
+          setFeatured(results[0]);
+        }
+
+        // 2. Fetch Watchlist
+        if (token) {
+          const watchRes = await fetch(`${API_URL}/api/watchlist`, {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          const watchData = await watchRes.json();
+          setWatchlist(watchData.slice(0, 3)); // Only show top 3 for dashboard
+        }
+      } catch (e) {
+        console.error("Dashboard load error:", e);
+      } finally {
+        setLoading(false);
       }
-    } catch (error) {
-      console.error("Failed to add to watchlist", error);
     }
-  };
+    loadData();
+  }, [getToken]);
+
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[80vh] text-zinc-500 animate-pulse">
+        <Loader2 className="w-12 h-12 animate-spin text-emerald-500 mb-4" />
+        <p className="text-xl font-medium">Curating your experience...</p>
+      </div>
+    );
+  }
 
   return (
-    <div className="pb-12">
-      {/* Hero Section */}
-      <div className="relative w-full h-[60vh] min-h-[500px]">
-        {/* Placeholder background instead of actual image for now */}
-        <div className="absolute inset-0 bg-gradient-to-r from-zinc-950 via-zinc-950/80 to-transparent z-10" />
-        <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1626814026160-2237a95fc5a0?q=80&w=2000&auto=format&fit=crop')] bg-cover bg-center opacity-40" />
-        <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/20 to-transparent z-10" />
-        
-        <div className="absolute inset-0 z-20 flex flex-col justify-end p-8 md:p-12 max-w-3xl">
-          <div className="flex items-center gap-3 mb-4">
-            <span className={`text-xs font-bold px-2 py-1 rounded uppercase tracking-wider ${PROVIDER_COLORS[FEATURED.provider]}`}>
-              {FEATURED.provider}
-            </span>
-            <span className="text-emerald-500 font-semibold text-sm">{FEATURED.match}</span>
-            <span className="text-zinc-400 text-sm">{FEATURED.year}</span>
-            <span className="border border-zinc-600 text-zinc-400 text-xs px-1 rounded">{FEATURED.rating}</span>
-            <span className="text-zinc-400 text-sm">{FEATURED.duration}</span>
+    <div className="pb-20">
+      {/* Featured Section */}
+      {featured && (
+        <div className="relative w-full h-[70vh] min-h-[600px] overflow-hidden">
+          <div className="absolute inset-0">
+            <img 
+              src={`${TMDB_IMG_LARGE}${featured.backdrop_path}`} 
+              alt={featured.title || featured.name} 
+              className="w-full h-full object-cover"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/40 to-transparent" />
+            <div className="absolute inset-0 bg-gradient-to-r from-zinc-950 via-transparent to-transparent" />
           </div>
           
-          <h1 className="text-5xl md:text-7xl font-extrabold mb-4 tracking-tight">
-            {FEATURED.title}
-          </h1>
-          
-          <p className="text-lg text-zinc-300 mb-6 line-clamp-3">
-            {FEATURED.description}
-          </p>
-          
-          <div className="flex items-center gap-4 mb-6">
-            <Button size="lg" className="h-14 px-8 text-lg font-bold bg-white text-black hover:bg-zinc-200 rounded-full flex items-center gap-2 transition-transform hover:scale-105">
-              <Play fill="currentColor" size={20} />
-              Play
-            </Button>
-            <Button 
-              size="lg" 
-              variant="outline" 
-              onClick={() => addToWatchlist({ title: FEATURED.title, type: "Movie", image: "https://images.unsplash.com/photo-1626814026160-2237a95fc5a0?q=80&w=2000&auto=format&fit=crop", provider: FEATURED.provider })}
-              className="h-14 px-8 text-lg font-bold border-zinc-700 hover:bg-zinc-800 rounded-full flex items-center gap-2 transition-transform hover:scale-105 bg-black/40 backdrop-blur-sm"
-            >
-              <Plus size={20} />
-              Watchlist
-            </Button>
-            <Button size="icon" variant="ghost" className="h-14 w-14 rounded-full bg-black/40 backdrop-blur-sm border border-zinc-700 hover:bg-zinc-800">
-              <Info size={24} />
-            </Button>
-          </div>
-          
-          <div className="flex gap-2">
-            {FEATURED.tags.map(tag => (
-              <span key={tag} className="text-xs font-medium text-zinc-400 bg-zinc-900/80 px-3 py-1 rounded-full border border-zinc-800">
-                {tag}
+          <div className="absolute inset-0 flex flex-col justify-end p-8 md:p-16 max-w-4xl z-20">
+            <div className="flex items-center gap-3 mb-4">
+              <span className="bg-emerald-500/20 text-emerald-400 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider border border-emerald-500/30">
+                Trending {featured.media_type === "movie" ? "Movie" : "Series"}
               </span>
-            ))}
+              <div className="flex items-center gap-1 text-yellow-400 text-sm font-bold">
+                <Star size={14} className="fill-yellow-400" />
+                {featured.vote_average.toFixed(1)}
+              </div>
+            </div>
+            
+            <h1 className="text-5xl md:text-8xl font-black mb-6 tracking-tighter italic uppercase leading-[0.9]">
+              {featured.title || featured.name}
+            </h1>
+            
+            <p className="text-lg md:text-xl text-zinc-300 mb-8 line-clamp-3 max-w-2xl font-medium opacity-90 leading-relaxed">
+              {featured.overview}
+            </p>
+            
+            <div className="flex items-center gap-4">
+              <Link href={`/dashboard/titles/${featured.media_type}/${featured.id}`}>
+                <Button size="lg" className="h-14 px-10 text-lg font-black bg-emerald-500 text-zinc-950 hover:bg-emerald-400 rounded-full flex items-center gap-2 transition-all hover:scale-105 shadow-xl shadow-emerald-500/20 uppercase italic">
+                  <Play fill="currentColor" size={20} />
+                  View Details
+                </Button>
+              </Link>
+              <Button size="icon" variant="outline" className="h-14 w-14 rounded-full border-zinc-700 bg-black/40 backdrop-blur-md hover:bg-zinc-800 text-white">
+                <Plus size={24} />
+              </Button>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
-      <div className="px-8 md:px-12 mt-8 space-y-12 z-30 relative">
-        {/* Continue Watching Section */}
-        <section>
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-bold">Continue Watching</h2>
-            <button className="text-zinc-400 hover:text-white flex items-center text-sm font-medium transition-colors">
-              See All <ChevronRight size={16} />
-            </button>
+      <div className="px-8 md:px-16 -translate-y-12 space-y-16 z-30 relative">
+        {/* Continue Reading Section (Real Watchlist) */}
+        {watchlist.length > 0 && (
+          <section>
+            <div className="flex items-center justify-between mb-8">
+              <div className="space-y-1">
+                <h2 className="text-2xl font-black italic uppercase tracking-tight">Your Watchlist</h2>
+                <p className="text-zinc-500 text-sm">Pick up where you left off</p>
+              </div>
+              <Link href="/dashboard/watchlist" className="text-emerald-400 hover:text-emerald-300 flex items-center text-sm font-bold transition-colors uppercase tracking-widest">
+                See Full List <ChevronRight size={16} />
+              </Link>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {watchlist.map((item) => (
+                <Link 
+                  key={item.id} 
+                  href={`/dashboard/watchlist`}
+                  className="group relative rounded-2xl overflow-hidden bg-zinc-900 border border-zinc-800 transition-all hover:border-emerald-500/50 hover:shadow-2xl flex h-36"
+                >
+                  <div className="w-1/3 relative">
+                    <img src={item.image} alt={item.title} className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-500" />
+                    <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Play fill="white" size={20} />
+                    </div>
+                  </div>
+                  <div className="w-2/3 p-5 flex flex-col justify-between bg-zinc-900/50 backdrop-blur-sm">
+                    <div>
+                      <h3 className="font-bold text-lg leading-tight truncate text-zinc-100">{item.title}</h3>
+                      <p className="text-zinc-500 text-xs mt-1 uppercase font-bold tracking-widest">{item.type}</p>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] text-zinc-400 italic">Added {new Date(item.addedAt).toLocaleDateString()}</span>
+                    </div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* Modern Trending Slider */}
+        <section className="relative group/slider">
+          <div className="flex items-center justify-between mb-8">
+            <div className="space-y-1">
+              <h2 className="text-2xl font-black italic uppercase tracking-tight">Trending Now</h2>
+              <p className="text-zinc-500 text-sm">The most watched titles this week</p>
+            </div>
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {CONTINUE_WATCHING.map((item) => (
-              <div key={item.id} className="group cursor-pointer relative rounded-xl overflow-hidden bg-zinc-900 border border-zinc-800 transition-all hover:border-zinc-600 hover:shadow-xl">
-                <div className="flex h-32">
-                  <div className="w-1/3 relative">
-                    <img src={item.image} alt={item.title} className="w-full h-full object-cover" />
-                    <div className="absolute inset-0 bg-black/40 group-hover:bg-black/20 transition-colors flex items-center justify-center">
-                      <div className="w-10 h-10 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all scale-75 group-hover:scale-100">
-                        <Play fill="white" size={16} className="text-white" />
+          <div className="relative">
+            {/* Left Button */}
+            <button 
+              onClick={() => {
+                const el = document.getElementById("trending-slider");
+                el?.scrollBy({ left: -400, behavior: "smooth" });
+              }}
+              className="absolute -left-6 top-1/2 -translate-y-1/2 z-40 w-12 h-12 rounded-full bg-zinc-900/80 border border-zinc-800 flex items-center justify-center text-white opacity-0 group-hover/slider:opacity-100 transition-opacity hover:bg-emerald-500 hover:text-zinc-950 hover:border-emerald-400 shadow-2xl backdrop-blur-md"
+            >
+              <ChevronRight className="rotate-180" size={24} />
+            </button>
+
+            {/* Right Button */}
+            <button 
+              onClick={() => {
+                const el = document.getElementById("trending-slider");
+                el?.scrollBy({ left: 400, behavior: "smooth" });
+              }}
+              className="absolute -right-6 top-1/2 -translate-y-1/2 z-40 w-12 h-12 rounded-full bg-zinc-900/80 border border-zinc-800 flex items-center justify-center text-white opacity-0 group-hover/slider:opacity-100 transition-opacity hover:bg-emerald-500 hover:text-zinc-950 hover:border-emerald-400 shadow-2xl backdrop-blur-md"
+            >
+              <ChevronRight size={24} />
+            </button>
+
+            <div 
+              id="trending-slider"
+              className="flex gap-6 overflow-x-auto pb-10 scrollbar-hide snap-x px-4 -mx-4 scroll-smooth"
+            >
+              {trending.map((item) => (
+                <Link 
+                  href={`/dashboard/titles/${item.media_type}/${item.id}`}
+                  key={item.id} 
+                  className="relative flex-none w-48 md:w-64 aspect-[2/3] rounded-2xl overflow-hidden snap-start group/card cursor-pointer transition-all duration-500 hover:scale-[1.03] hover:z-20 shadow-xl border border-zinc-900 hover:border-emerald-500/50 hover:shadow-emerald-500/10"
+                >
+                  <img 
+                    src={`${TMDB_IMG_POSTER}${item.poster_path}`} 
+                    alt={item.title || item.name} 
+                    className="w-full h-full object-cover transition-transform duration-700 group-hover/card:scale-110" 
+                  />
+                  
+                  {/* Subtle Gradient Overlay */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/10 to-transparent opacity-80 group-hover/card:opacity-100 transition-opacity" />
+                  
+                  {/* Hover Content */}
+                  <div className="absolute bottom-0 left-0 p-5 w-full transform translate-y-2 group-hover/card:translate-y-0 transition-all duration-300">
+                    <div className="flex items-center gap-2 mb-2 opacity-0 group-hover/card:opacity-100 transition-opacity delay-100">
+                      <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-emerald-500 text-zinc-950 uppercase tracking-tighter">
+                        {item.media_type}
+                      </span>
+                      <div className="flex items-center gap-0.5 text-yellow-400 text-[10px] font-bold">
+                        <Star size={10} className="fill-yellow-400" />
+                        {item.vote_average.toFixed(1)}
                       </div>
                     </div>
+                    <h3 className="font-bold text-lg leading-tight text-white line-clamp-2 group-hover/card:text-emerald-400 transition-colors">
+                      {item.title || item.name}
+                    </h3>
                   </div>
-                  <div className="w-2/3 p-4 flex flex-col justify-between">
-                    <div>
-                      <h3 className="font-bold text-lg leading-tight truncate">{item.title}</h3>
-                      <p className="text-zinc-400 text-sm truncate">{item.episode}</p>
-                    </div>
-                    <div className="flex items-center justify-between mt-4">
-                      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded uppercase ${PROVIDER_COLORS[item.provider]}`}>
-                        {item.provider}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-                {/* Progress bar */}
-                <div className="absolute bottom-0 left-0 w-full h-1 bg-zinc-800">
-                  <div className="h-full bg-emerald-500" style={{ width: `${item.progress}%` }} />
-                </div>
-              </div>
-            ))}
+                </Link>
+              ))}
+            </div>
           </div>
         </section>
 
-        {/* Trending Section */}
-        <section>
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-bold">Trending Now</h2>
-            <button className="text-zinc-400 hover:text-white flex items-center text-sm font-medium transition-colors">
-              See All <ChevronRight size={16} />
-            </button>
-          </div>
-          
-          <div className="flex gap-4 overflow-x-auto pb-6 scrollbar-hide snap-x">
-            {TRENDING.map((item) => (
-              <div 
-                key={item.id} 
-                className="relative flex-none w-48 md:w-56 aspect-[2/3] rounded-xl overflow-hidden snap-start group cursor-pointer transition-all duration-300 hover:scale-105 hover:z-10 shadow-lg"
-                onMouseEnter={() => setHoveredItem(item.id)}
-                onMouseLeave={() => setHoveredItem(null)}
-              >
-                <img src={item.image} alt={item.title} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-80 group-hover:opacity-100 transition-opacity" />
-                
-                <div className="absolute top-3 right-3">
-                  <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded uppercase ${PROVIDER_COLORS[item.provider]} shadow-sm`}>
-                    {item.provider}
-                  </span>
-                </div>
-                
-                <div className="absolute bottom-0 left-0 p-4 w-full transform translate-y-4 group-hover:translate-y-0 transition-transform">
-                  <h3 className="font-bold text-lg mb-1 truncate text-white">{item.title}</h3>
-                  <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity delay-100">
-                    <button className="w-8 h-8 rounded-full bg-white flex items-center justify-center text-black hover:bg-emerald-400 transition-colors">
-                      <Play fill="currentColor" size={14} className="ml-0.5" />
-                    </button>
-                    <button 
-                      onClick={() => addToWatchlist({ title: item.title, type: "Series", image: item.image, provider: item.provider })}
-                      className="w-8 h-8 rounded-full bg-zinc-800/80 backdrop-blur-sm flex items-center justify-center text-white border border-zinc-600 hover:bg-zinc-700 transition-colors"
-                    >
-                      <Plus size={16} />
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ))}
+        {/* Quick Search CTA */}
+        <section className="relative rounded-3xl overflow-hidden bg-gradient-to-br from-emerald-600 to-teal-800 p-12 md:p-20 text-center shadow-2xl">
+          <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-20" />
+          <div className="relative z-10 max-w-2xl mx-auto space-y-6">
+            <h2 className="text-4xl md:text-6xl font-black italic uppercase tracking-tighter leading-none text-white">
+              Stop searching.<br />Start watching.
+            </h2>
+            <p className="text-emerald-100/80 text-lg font-medium">
+              We track availability across 50+ platforms so you don't have to.
+            </p>
+            <div className="pt-4">
+              <Link href="/dashboard/search">
+                <Button size="lg" className="bg-white text-emerald-900 hover:bg-emerald-50 rounded-full px-12 h-16 text-xl font-black uppercase italic shadow-2xl shadow-black/20">
+                  Find Your Next Show
+                </Button>
+              </Link>
+            </div>
           </div>
         </section>
       </div>

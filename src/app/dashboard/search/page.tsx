@@ -144,9 +144,27 @@ export default function SearchPage() {
   const addToWatchlist = async (item: TMDBResult) => {
     const key = `${item.media_type}-${item.id}`;
     if (addedIds.has(key)) return;
+    
     try {
       const token = await getToken();
       const title = item.title || item.name || "Untitled";
+      
+      // 1. Quickly check availability to find the best provider
+      const availRes = await fetch(`${API_URL}/api/titles/${item.media_type}/${item.id}/availability`);
+      const sources = await availRes.json();
+      
+      // 2. Fetch user's subscriptions to match
+      const subRes = await fetch(`${API_URL}/api/providers`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const userSubsData = await subRes.json();
+      const userSubs = userSubsData.map((p: any) => p.provider);
+
+      // 3. Find a match or pick the first available "sub" source
+      const bestMatch = sources.find((s: any) => userSubs.includes(s.name)) || sources.find((s: any) => s.type === "sub");
+      const providerName = bestMatch?.name || "unknown";
+
+      // 4. Add to watchlist with the real provider
       await fetch(`${API_URL}/api/watchlist`, {
         method: "POST",
         headers: {
@@ -157,9 +175,11 @@ export default function SearchPage() {
           title,
           type: item.media_type === "movie" ? "Movie" : "Series",
           image: item.poster_path ? `${TMDB_IMG}${item.poster_path}` : null,
-          provider: "unknown",
+          provider: providerName,
+          tmdbId: item.id.toString(),
         }),
       });
+      
       setAddedIds((prev) => new Set(prev).add(key));
     } catch (e) {
       console.error("Failed to add to watchlist:", e);
