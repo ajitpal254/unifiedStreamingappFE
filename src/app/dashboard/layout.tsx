@@ -38,6 +38,10 @@ export default function DashboardLayout({
             <TrendingUp size={20} />
             Trending
           </Link>
+          <Link href="/dashboard/search" className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-zinc-400 hover:text-zinc-100 hover:bg-zinc-900 transition-colors font-medium">
+            <Search size={20} />
+            Search
+          </Link>
           <Link href="/dashboard/watchlist" className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-zinc-400 hover:text-zinc-100 hover:bg-zinc-900 transition-colors font-medium">
             <Bookmark size={20} />
             Watchlist
