@@ -48,6 +48,10 @@ interface Provider {
   format: string;
 }
 
+interface UserProvider {
+  provider: string;
+}
+
 export default function TitleDetailPage() {
   const { type, id } = useParams();
   const { getToken } = useAuth();
@@ -84,7 +88,7 @@ export default function TitleDetailPage() {
         headers: { Authorization: `Bearer ${token}` }
       })
       .then(res => res.json())
-      .then(data => setUserSubs(data.map((p: any) => p.provider)))
+      .then((providers: UserProvider[]) => setUserSubs(providers.map((provider) => provider.provider)))
       .catch(console.error);
     });
   }, [type, id, getToken]);
@@ -93,6 +97,10 @@ export default function TitleDetailPage() {
     if (!data) return;
     try {
       const token = await getToken();
+      const preferredProvider =
+        availability.find((source) => userSubs.includes(source.name)) ??
+        availability.find((source) => source.type === "sub");
+
       await fetch(`${API_URL}/api/watchlist`, {
         method: "POST",
         headers: {
@@ -103,8 +111,9 @@ export default function TitleDetailPage() {
           title: data.title || data.name,
           type: type === "movie" ? "Movie" : "Series",
           image: `${TMDB_IMG_POSTER}${data.poster_path}`,
-          provider: availability[0]?.name || "unknown",
+          provider: preferredProvider?.name || availability[0]?.name || "unknown",
           tmdbId: id,
+          tmdbType: type,
         }),
       });
       setIsAdded(true);
@@ -293,6 +302,27 @@ export default function TitleDetailPage() {
                       href={source.url}
                       target="_blank"
                       rel="noopener noreferrer"
+                      onClick={async () => {
+                        try {
+                          const token = await getToken();
+                          fetch(`${API_URL}/api/tracking/click`, {
+                            method: "POST",
+                            headers: { 
+                              "Content-Type": "application/json",
+                              Authorization: `Bearer ${token}` 
+                            },
+                            body: JSON.stringify({
+                              title: data.title || data.name,
+                              provider: source.name,
+                              url: source.url,
+                              tmdbId: id,
+                              tmdbType: type
+                            })
+                          });
+                        } catch (err) {
+                          console.error("Tracking failed", err);
+                        }
+                      }}
                       className={`flex items-center justify-between p-4 rounded-2xl border transition-all group ${
                         isSubscribed 
                           ? "bg-emerald-500/10 border-emerald-500/50 hover:bg-emerald-500/20 shadow-[0_0_15px_rgba(16,185,129,0.1)]" 

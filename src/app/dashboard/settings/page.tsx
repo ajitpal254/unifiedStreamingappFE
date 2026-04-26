@@ -10,6 +10,15 @@ const POPULAR_PROVIDERS = [
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
 
+interface UserProvider {
+  provider: string;
+}
+
+interface MeResponse {
+  providers?: UserProvider[];
+  region?: string;
+}
+
 export default function ProfilePage() {
   const { getToken } = useAuth();
   const [activeTab, setActiveTab] = useState<"profile" | "subs" | "region">("profile");
@@ -25,8 +34,8 @@ export default function ProfilePage() {
         const res = await fetch(`${API_URL}/api/me`, {
           headers: { Authorization: `Bearer ${token}` }
         });
-        const data = await res.json();
-        setMySubs(data.providers?.map((p: any) => p.provider) || []);
+        const data: MeResponse = await res.json();
+        setMySubs(data.providers?.map((p) => p.provider) || []);
         setRegion(data.region || "US");
       } catch (e) {
         console.error(e);
@@ -135,7 +144,7 @@ export default function ProfilePage() {
         <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-8 shadow-2xl animate-in fade-in slide-in-from-bottom-2 duration-300">
           <div className="mb-8">
             <h2 className="text-2xl font-bold mb-2">Streaming Platforms</h2>
-            <p className="text-zinc-500">Select the services you currently pay for. We'll prioritize these in your search results.</p>
+            <p className="text-zinc-500">Select the services you currently pay for. We&apos;ll prioritize these in your search results.</p>
           </div>
 
           {loading ? (
@@ -193,7 +202,7 @@ export default function ProfilePage() {
               <option value="FR">France (FR)</option>
             </select>
             <p className="text-xs text-zinc-600 italic">
-              Don't see your country? We're adding more regions soon.
+              Don&apos;t see your country? We&apos;re adding more regions soon.
             </p>
           </div>
         </div>

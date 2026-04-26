@@ -64,11 +64,11 @@ This is **not** a re-streaming app. It's a **streaming operating layer** — a f
 ### 🟠 Priority 2 — Providers & Deep Links
 - [ ] Provider selection UI — Netflix, Prime, Disney+, Hulu, Max, YouTube…
 - [ ] Save user's active subscriptions to DB
-- [ ] Deep link service — "Watch on Netflix" button routes to correct provider URL
-- [ ] Track outbound click events for analytics
+- [x] Deep link service — "Watch on Netflix" button routes to correct provider URL
+- [x] Track outbound click events for analytics
 
 ### 🟡 Priority 3 — Recommendations
-- [ ] Recommendation feed (`/dashboard`) — "Available on your services", "Because you liked…"
+- [x] Recommendation feed (`/dashboard`) — "Available on your services", "Because you liked…"
 - [ ] Rules-based ranking using subscriptions, watchlist, genres, and popularity
 - [ ] Country/region filtering
 

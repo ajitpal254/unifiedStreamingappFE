@@ -35,6 +35,8 @@ export default function Dashboard() {
   const { getToken } = useAuth();
   const [trending, setTrending] = useState<Title[]>([]);
   const [recommended, setRecommended] = useState<Title[]>([]);
+  const [personalized, setPersonalized] = useState<Title[]>([]);
+  const [recBaseTitle, setRecBaseTitle] = useState("");
   const [watchlist, setWatchlist] = useState<WatchlistItem[]>([]);
   const [featured, setFeatured] = useState<Title | null>(null);
   const [loading, setLoading] = useState(true);
@@ -68,6 +70,14 @@ export default function Dashboard() {
           });
           const watchData = await watchRes.json();
           setWatchlist(watchData.slice(0, 3));
+
+          // 4. Fetch Personalized (Watchlist-based)
+          const personalRes = await fetch(`${API_URL}/api/titles/personalized`, {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          const personalData = await personalRes.json();
+          setPersonalized(personalData.results || []);
+          setRecBaseTitle(personalData.basedOn || "");
         }
       } catch (e) {
         console.error("Dashboard load error:", e);
@@ -174,6 +184,61 @@ export default function Dashboard() {
                   </div>
                 </Link>
               ))}
+            </div>
+          </section>
+        )}
+        
+        {/* New: Because you liked... Section */}
+        {personalized.length > 0 && (
+          <section className="relative group/personal-slider">
+            <div className="flex items-center justify-between mb-8">
+              <div className="space-y-1">
+                <h2 className="text-2xl font-black italic uppercase tracking-tight flex items-center gap-2">
+                  Because you liked <span className="text-emerald-400">“{recBaseTitle}”</span>
+                </h2>
+                <p className="text-zinc-500 text-sm">Similar titles you might enjoy</p>
+              </div>
+            </div>
+            
+            <div className="relative">
+              <button 
+                onClick={() => document.getElementById("personal-slider")?.scrollBy({ left: -400, behavior: "smooth" })}
+                className="absolute -left-6 top-1/2 -translate-y-1/2 z-40 w-12 h-12 rounded-full bg-zinc-900/80 border border-zinc-800 flex items-center justify-center text-white opacity-0 group-hover/personal-slider:opacity-100 transition-opacity hover:bg-emerald-500 hover:text-zinc-950 shadow-2xl backdrop-blur-md"
+              >
+                <ChevronRight className="rotate-180" size={24} />
+              </button>
+
+              <button 
+                onClick={() => document.getElementById("personal-slider")?.scrollBy({ left: 400, behavior: "smooth" })}
+                className="absolute -right-6 top-1/2 -translate-y-1/2 z-40 w-12 h-12 rounded-full bg-zinc-900/80 border border-zinc-800 flex items-center justify-center text-white opacity-0 group-hover/personal-slider:opacity-100 transition-opacity hover:bg-emerald-500 hover:text-zinc-950 shadow-2xl backdrop-blur-md"
+              >
+                <ChevronRight size={24} />
+              </button>
+
+              <div 
+                id="personal-slider"
+                className="flex gap-6 overflow-x-auto pb-10 scrollbar-hide snap-x px-4 -mx-4 scroll-smooth"
+              >
+                {personalized.map((item) => (
+                  <Link 
+                    href={`/dashboard/titles/${item.media_type}/${item.id}`}
+                    key={`personal-${item.id}`} 
+                    className="relative flex-none w-48 md:w-64 aspect-[2/3] rounded-2xl overflow-hidden snap-start group/card cursor-pointer transition-all duration-500 hover:scale-[1.03] hover:z-20 shadow-xl border border-zinc-900 hover:border-emerald-500/50"
+                  >
+                    <img 
+                      src={item.poster_path?.startsWith("http") ? item.poster_path : `${TMDB_IMG_POSTER}${item.poster_path}`} 
+                      alt={item.title || item.name} 
+                      className="w-full h-full object-cover transition-transform duration-700 group-hover/card:scale-110" 
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-transparent to-transparent opacity-80" />
+                    <div className="absolute bottom-0 left-0 p-5 w-full">
+                      <h3 className="font-bold text-lg leading-tight text-white line-clamp-2 group-hover/card:text-emerald-400">
+                        {item.title || item.name}
+                      </h3>
+                    </div>
+                  </Link>
+                ))}
+              </div>
             </div>
           </section>
         )}
@@ -354,7 +419,7 @@ export default function Dashboard() {
               Stop searching.<br />Start watching.
             </h2>
             <p className="text-emerald-100/80 text-lg font-medium">
-              We track availability across 50+ platforms so you don't have to.
+              We track availability across 50+ platforms so you don&apos;t have to.
             </p>
             <div className="pt-4">
               <Link href="/dashboard/search">

@@ -19,6 +19,15 @@ interface TMDBResult {
   genre_ids: number[];
 }
 
+interface UserProvider {
+  provider: string;
+}
+
+interface AvailabilitySource {
+  name: string;
+  type: string;
+}
+
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
 const TMDB_IMG = "https://image.tmdb.org/t/p/w500";
 
@@ -157,11 +166,13 @@ export default function SearchPage() {
       const subRes = await fetch(`${API_URL}/api/providers`, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      const userSubsData = await subRes.json();
-      const userSubs = userSubsData.map((p: any) => p.provider);
+      const userSubsData: UserProvider[] = await subRes.json();
+      const userSubs = userSubsData.map((p) => p.provider);
 
       // 3. Find a match or pick the first available "sub" source
-      const bestMatch = sources.find((s: any) => userSubs.includes(s.name)) || sources.find((s: any) => s.type === "sub");
+      const bestMatch =
+        (sources as AvailabilitySource[]).find((source) => userSubs.includes(source.name)) ||
+        (sources as AvailabilitySource[]).find((source) => source.type === "sub");
       const providerName = bestMatch?.name || "unknown";
 
       // 4. Add to watchlist with the real provider
@@ -176,7 +187,8 @@ export default function SearchPage() {
           type: item.media_type === "movie" ? "Movie" : "Series",
           image: item.poster_path ? `${TMDB_IMG}${item.poster_path}` : null,
           provider: providerName,
-          tmdbId: item.id.toString(),
+          tmdbId: item.id,
+          tmdbType: item.media_type,
         }),
       });
       

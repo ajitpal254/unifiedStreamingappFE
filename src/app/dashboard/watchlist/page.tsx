@@ -3,14 +3,10 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@clerk/nextjs";
 import { 
-  Play, 
   Trash2, 
   Search, 
-  Filter, 
-  ChevronRight, 
   Calendar,
   Film,
-  Tv,
   Loader2,
   ExternalLink
 } from "lucide-react";
@@ -20,8 +16,10 @@ interface WatchlistItem {
   id: string;
   title: string;
   type: string;
+  tmdbId: number | null;
+  tmdbType: "movie" | "tv" | null;
   progress: number;
-  image: string;
+  image: string | null;
   provider: string;
   addedAt: string;
 }
@@ -36,23 +34,33 @@ export default function WatchlistPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchWatchlist();
-  }, [getToken]);
+    let isActive = true;
 
-  const fetchWatchlist = async () => {
-    try {
-      const token = await getToken();
-      const res = await fetch(`${API_URL}/api/watchlist`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await res.json();
-      setWatchlist(data);
-    } catch (err) {
-      console.error("Failed to fetch watchlist:", err);
-    } finally {
-      setLoading(false);
+    async function loadWatchlist() {
+      try {
+        const token = await getToken();
+        const res = await fetch(`${API_URL}/api/watchlist`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = await res.json();
+        if (isActive) {
+          setWatchlist(data);
+        }
+      } catch (err) {
+        console.error("Failed to fetch watchlist:", err);
+      } finally {
+        if (isActive) {
+          setLoading(false);
+        }
+      }
     }
-  };
+
+    void loadWatchlist();
+
+    return () => {
+      isActive = false;
+    };
+  }, [getToken]);
 
   const deleteFromWatchlist = async (id: string) => {
     try {
@@ -68,6 +76,11 @@ export default function WatchlistPage() {
       console.error("Failed to delete item:", err);
     }
   };
+
+  const getDetailsHref = (item: WatchlistItem) =>
+    item.tmdbId && item.tmdbType
+      ? `/dashboard/titles/${item.tmdbType}/${item.tmdbId}`
+      : "/dashboard/search";
 
   const filteredWatchlist = watchlist.filter((item) => {
     const matchesFilter =
@@ -149,7 +162,13 @@ export default function WatchlistPage() {
             >
               {/* Poster Card */}
               <div className="relative aspect-[2/3] rounded-2xl overflow-hidden bg-zinc-900 border border-zinc-800 transition-all duration-500 group-hover:scale-[1.03] group-hover:z-10 group-hover:border-emerald-500/50 shadow-xl shadow-black/40">
-                <img src={item.image} alt={item.title} className="w-full h-full object-cover grayscale-[0.3] group-hover:grayscale-0 transition-all duration-700" />
+                {item.image ? (
+                  <img src={item.image} alt={item.title} className="w-full h-full object-cover grayscale-[0.3] group-hover:grayscale-0 transition-all duration-700" />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center text-zinc-700">
+                    <Film size={40} />
+                  </div>
+                )}
                 
                 {/* Overlay */}
                 <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-transparent to-transparent opacity-60 group-hover:opacity-100 transition-opacity" />
@@ -183,7 +202,7 @@ export default function WatchlistPage() {
                 {/* Quick Link Overlay */}
                 <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all bg-emerald-500/10 backdrop-blur-[2px]">
                    <Link 
-                     href={`/dashboard/search`} // Note: Ideally we store type/id to link to details
+                     href={getDetailsHref(item)}
                      className="w-12 h-12 rounded-full bg-emerald-500 flex items-center justify-center text-zinc-950 shadow-2xl scale-75 group-hover:scale-100 transition-all duration-300 hover:bg-emerald-400"
                    >
                      <ExternalLink size={20} strokeWidth={3} />

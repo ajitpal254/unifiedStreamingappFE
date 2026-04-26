@@ -172,7 +172,7 @@ export default function OnboardingPage() {
             
             <div className="space-y-4">
               <h1 className="text-5xl md:text-7xl font-black italic uppercase tracking-tighter leading-none">Ready for Action</h1>
-              <p className="text-zinc-400 text-xl max-w-md mx-auto">We've tailored your dashboard with your region and {mySubs.length} services.</p>
+              <p className="text-zinc-400 text-xl max-w-md mx-auto">We&apos;ve tailored your dashboard with your region and {mySubs.length} services.</p>
             </div>
 
             <button 
